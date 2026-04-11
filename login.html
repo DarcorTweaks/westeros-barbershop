@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso Westeros</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body{
+background:
+linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)),
+url('login-bg.jpg');
+background-size:cover;
+background-position:center;
+color:white;
+font-family:system-ui;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.box{
+background:rgba(0,0,0,0.7);
+backdrop-filter:blur(10px);
+border:1px solid #d4af37;
+padding:25px;
+border-radius:16px;
+width:90%;
+max-width:360px;
+text-align:center;
+}
+
+select,input{
+width:100%;
+padding:12px;
+margin-top:10px;
+background:#0b0b0b;
+border:1px solid #333;
+border-radius:10px;
+}
+
+button{
+width:100%;
+padding:12px;
+margin-top:15px;
+background:#d4af37;
+color:black;
+border-radius:10px;
+font-weight:bold;
+}
+
+.link{
+font-size:12px;
+margin-top:10px;
+color:#aaa;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1 class="text-yellow-400 mb-3">Acceso del Reino</h1>
+
+<select id="usuario">
+<option>Stark</option>
+<option>Targaryen</option>
+<option>Lannister</option>
+<option>Baratheon</option>
+<option>Greyjoy</option>
+</select>
+
+<input type="password" id="pin" placeholder="PIN">
+
+<button onclick="login()">Entrar</button>
+
+<div class="link" onclick="mostrarCambio()">Cambiar PIN</div>
+
+<div id="cambiar" style="display:none;">
+
+<input type="password" id="nuevoPin" placeholder="Nuevo PIN">
+
+<button onclick="guardarPin()">Guardar PIN</button>
+
+</div>
+
+</div>
+
+<script>
+
+/* 🔥 PINES (LOCAL STORAGE) */
+let claves = JSON.parse(localStorage.getItem("claves")) || {
+Stark:"1234",
+Targaryen:"1234",
+Lannister:"1234",
+Baratheon:"1234",
+Greyjoy:"1234"
+};
+
+function login(){
+let u = usuario.value;
+let p = pin.value;
+
+if(p === claves[u]){
+localStorage.setItem("barbero",u);
+window.location.href = "agenda.html";
+}else{
+alert("PIN incorrecto");
+}
+}
+
+/* 🔥 CAMBIAR PIN */
+function mostrarCambio(){
+document.getElementById("cambiar").style.display="block";
+}
+
+function guardarPin(){
+
+let u = usuario.value;
+let nuevo = document.getElementById("nuevoPin").value;
+
+if(nuevo.length < 3){
+alert("PIN muy corto");
+return;
+}
+
+claves[u] = nuevo;
+
+localStorage.setItem("claves", JSON.stringify(claves));
+
+alert("PIN actualizado 🔥");
+
+}
+
+</script>
+
+</body>
+</html>

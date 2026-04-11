@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Westeros Barbershop</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+body{
+background:
+linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)),
+url('fondo.jpg');
+background-size:cover;
+background-position:center;
+color:white;
+font-family:system-ui;
+animation:fadeBody .8s ease;
+}
+
+@keyframes fadeBody{
+from{opacity:0}
+to{opacity:1}
+}
+
+.logo{
+height:140px;
+margin:auto;
+filter:drop-shadow(0 0 20px gold);
+animation:fadeUp 1s ease;
+}
+
+@keyframes fadeUp{
+from{opacity:0; transform:translateY(20px);}
+to{opacity:1; transform:translateY(0);}
+}
+
+.card{
+background:rgba(0,0,0,0.6);
+border:1px solid #333;
+padding:12px;
+border-radius:12px;
+cursor:pointer;
+transition:all .25s ease;
+animation:fadeUp .6s ease;
+}
+
+.card:hover{
+transform:scale(1.03);
+border-color:#d4af37;
+box-shadow:0 0 15px rgba(212,175,55,.4);
+}
+
+.active{
+border:2px solid #d4af37;
+box-shadow:0 0 15px gold;
+}
+
+.tag{
+background:#222;
+padding:4px 8px;
+border-radius:8px;
+font-size:11px;
+margin:2px;
+display:inline-block;
+}
+
+.house{
+background:rgba(0,0,0,0.6);
+border:1px solid #333;
+border-radius:12px;
+padding:10px;
+text-align:center;
+cursor:pointer;
+transition:all .25s ease;
+}
+
+.house img{
+height:55px;
+margin:auto;
+}
+
+.house.active{
+border:2px solid #d4af37;
+box-shadow:0 0 20px gold;
+}
+
+.barbero{
+font-size:11px;
+color:#aaa;
+}
+</style>
+</head>
+
+<body class="p-4">
+
+<div class="text-center mb-4">
+<img src="logo.png" class="logo">
+<h1 class="text-yellow-400 text-2xl">WESTEROS BARBERSHOP</h1>
+<p class="text-gray-400">Forja tu estilo en Westeros</p>
+</div>
+
+<div id="servicios"></div>
+
+<h2 class="mt-4">Elige tu casa</h2>
+
+<div class="grid grid-cols-3 gap-2">
+
+<div class="house" onclick="setCasa('Stark',this)">
+<img src="stark.png"><p>Stark</p><div class="barbero">Juan</div>
+</div>
+
+<div class="house" onclick="setCasa('Targaryen',this)">
+<img src="targaryen.png"><p>Targaryen</p><div class="barbero">Pedro</div>
+</div>
+
+<div class="house" onclick="setCasa('Lannister',this)">
+<img src="lannister.png"><p>Lannister</p><div class="barbero">Carlos</div>
+</div>
+
+<div class="house" onclick="setCasa('Baratheon',this)">
+<img src="baratheon.png"><p>Baratheon</p><div class="barbero">Luis</div>
+</div>
+
+<div class="house" onclick="setCasa('Greyjoy',this)">
+<img src="greyjoy.png"><p>Guardia Nocturna</p><div class="barbero">Miguel</div>
+</div>
+
+</div>
+
+<h2 class="mt-4">Selecciona día</h2>
+<div id="dias" class="grid grid-cols-4 gap-2 mt-2"></div>
+
+<h2 class="mt-4">Selecciona hora</h2>
+<div id="horas" class="grid grid-cols-3 gap-2 mt-2"></div>
+
+<input id="nombre" placeholder="Tu nombre" class="w-full p-3 mt-3 bg-black border rounded">
+<input id="telefono" placeholder="Teléfono" class="w-full p-3 mt-2 bg-black border rounded">
+
+<button onclick="guardar()" class="w-full bg-yellow-500 p-3 mt-3 text-black rounded">
+Reservar cita
+</button>
+
+<script>
+
+const firebaseConfig = {
+apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
+authDomain:"westeros-barbershop.firebaseapp.com",
+projectId:"westeros-barbershop"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* 🔥 SERVICIOS */
+let servicios = [
+{n:"⚔️ Corte del Plebeyo",p:10,d:["Corte básico","Perfilado","🎮 PS5"]},
+{n:"🛡️ Corte del Caballero",p:15,d:["Corte básico","Perfilado","Lavado x2","Mascarilla capilar","Bebida","Toalla caliente","Toalla fría","🎮 PS5"]},
+{n:"🧔 Barba del Norte",p:10,d:["Perfilado de barba","Toalla caliente","Aceite premium","🎮 PS5"]},
+{n:"🐺 Guardia Real",p:20,d:["Corte básico","Perfilado","Perfilado de barba","Toalla caliente","Aceite premium","Lavado x2","Mascarilla capilar","Bebida","Toalla fría","Masaje relajante","🎮 PS5"]},
+{n:"👑 Trono de Hierro",p:25,d:["Corte básico","Perfilado","Perfilado de barba","Toalla caliente","Aceite premium","Lavado x2 premium","Mascarilla avanzada","Bebida premium","Toalla fría","Masaje completo","🎮 PS5","🔥 Prioridad","👑 VIP"]}
+];
+
+let selectedServicio,selectedCasa,selectedFecha,selectedHora;
+let horasOcupadas = [];
+
+/* SERVICIOS */
+servicios.forEach((s,i)=>{
+document.getElementById("servicios").innerHTML+=`
+<div class="card mb-2" onclick="selServ(${i},this)">
+<div class="flex justify-between">
+<b>${s.n}</b><span>$${s.p}</span>
+</div>
+<div>${s.d.map(x=>`<span class="tag">${x}</span>`).join("")}</div>
+</div>`;
+});
+
+function selServ(i,e){
+document.querySelectorAll("#servicios .card").forEach(x=>x.classList.remove("active"));
+e.classList.add("active");
+selectedServicio=servicios[i];
+}
+
+/* CASA */
+function setCasa(c,e){
+selectedCasa=c;
+document.querySelectorAll(".house").forEach(x=>x.classList.remove("active"));
+e.classList.add("active");
+bloquearHoras();
+}
+
+/* DIAS */
+for(let i=0;i<7;i++){
+let d=new Date();
+d.setDate(d.getDate()+i);
+let f=d.toISOString().split("T")[0];
+
+document.getElementById("dias").innerHTML+=`
+<div class="card" onclick="sd('${f}',this)">
+${d.getDate()}/${d.getMonth()+1}
+</div>`;
+}
+
+function sd(f,e){
+document.querySelectorAll("#dias .card").forEach(x=>x.classList.remove("active"));
+e.classList.add("active");
+selectedFecha=f;
+bloquearHoras();
+}
+
+/* HORAS */
+function renderHoras(){
+
+document.getElementById("horas").innerHTML="";
+
+["10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"].forEach(h=>{
+
+let ocupado = horasOcupadas.includes(h);
+
+document.getElementById("horas").innerHTML+=`
+<div class="card ${ocupado?'opacity-30':''}"
+onclick="${ocupado?'':'sh(\''+h+'\',this)'}">
+${h} ${ocupado?'❌':''}
+</div>`;
+});
+}
+
+function sh(h,e){
+document.querySelectorAll("#horas .card").forEach(x=>x.classList.remove("active"));
+e.classList.add("active");
+selectedHora=h;
+}
+
+/* BLOQUEO */
+function bloquearHoras(){
+
+if(!selectedCasa || !selectedFecha) return;
+
+db.collection("citas")
+.where("barbero","==",selectedCasa)
+.where("fecha","==",selectedFecha)
+.get()
+.then(res=>{
+
+horasOcupadas=[];
+
+res.forEach(doc=>{
+horasOcupadas.push(doc.data().hora);
+});
+
+renderHoras();
+
+});
+
+}
+
+/* GUARDAR */
+function guardar(){
+
+if(!selectedServicio || !selectedCasa || !selectedFecha || !selectedHora){
+alert("Completa todo");
+return;
+}
+
+if(horasOcupadas.includes(selectedHora)){
+alert("❌ Hora ocupada");
+return;
+}
+
+db.collection("citas").add({
+servicio:selectedServicio.n,
+precio:selectedServicio.p,
+barbero:selectedCasa,
+fecha:selectedFecha,
+hora:selectedHora,
+nombre:document.getElementById("nombre").value,
+telefono:document.getElementById("telefono").value,
+estado:"pendiente"
+});
+
+alert("🔥 Cita guardada");
+}
+
+</script>
+
+</body>
+</html>

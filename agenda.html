@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+html,body{
+height:100%;
+margin:0;
+padding:0;
+}
+
+body{
+color:white;
+font-family:system-ui;
+}
+
+/* TARJETAS */
+.card{
+background:rgba(0,0,0,.65);
+padding:15px;
+border-radius:14px;
+margin-bottom:15px;
+backdrop-filter:blur(10px);
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.estado{
+padding:4px 10px;
+font-size:11px;
+border-radius:10px;
+}
+
+.pendiente{background:#7f1d1d;}
+.confirmado{background:#065f46;}
+
+.btn{
+padding:10px;
+border-radius:10px;
+font-size:12px;
+width:48%;
+margin-top:10px;
+}
+
+.gold{background:#d4af37;color:black;}
+.green{background:#065f46;}
+</style>
+</head>
+
+<body class="p-4">
+
+<script>
+let barbero = localStorage.getItem('barbero');
+if(!barbero){
+window.location.href='login.html';
+}
+</script>
+
+<h1 class="text-yellow-400 text-xl mb-3">📜 Agenda</h1>
+
+<div id="lista"></div>
+
+<script>
+
+/* 🔥 FIREBASE SEGURO */
+if (!firebase.apps.length) {
+firebase.initializeApp({
+apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
+authDomain:"westeros-barbershop.firebaseapp.com",
+projectId:"westeros-barbershop"
+});
+}
+
+const db = firebase.firestore();
+
+/* 🔥 FONDOS POR CASA */
+let fondos = {
+Stark:"stark.jpg",
+Targaryen:"targaryen.jpg",
+Lannister:"lannister.jpg",
+Baratheon:"baratheon.jpg",
+Greyjoy:"greyjoy.jpg"
+};
+
+/* 🔥 APLICAR FONDO BIEN (SIN ERRORES) */
+let fondoActual = fondos[barbero] || "fondo.jpg";
+
+document.body.style.backgroundImage = `
+linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.95)),
+url('${fondoActual}')
+`;
+
+document.body.style.backgroundSize = "cover";
+document.body.style.backgroundPosition = "center";
+document.body.style.backgroundRepeat = "no-repeat";
+document.body.style.backgroundAttachment = "fixed";
+
+/* 🔥 RENDER */
+db.collection("citas").onSnapshot(snap=>{
+
+let cont = document.getElementById("lista");
+cont.innerHTML = "";
+
+snap.forEach(doc=>{
+
+let c = doc.data();
+
+if(c.barbero == barbero){
+
+let estado = c.estado || "pendiente";
+
+cont.innerHTML += `
+<div class="card">
+
+<div class="flex justify-between">
+<div class="text-yellow-400 text-lg">
+${c.hora} - ${c.fecha}
+</div>
+
+<div class="estado ${estado}">
+${estado}
+</div>
+</div>
+
+<div class="mt-2"><b>${c.nombre}</b></div>
+
+<div>${c.servicio} - $${c.precio}</div>
+
+<div class="flex justify-between">
+
+<button onclick="confirmar('${doc.id}')" class="btn gold">
+Confirmar
+</button>
+
+<button onclick="contactar('${c.telefono}')" class="btn green">
+WhatsApp
+</button>
+
+</div>
+
+</div>
+`;
+
+}
+
+});
+
+});
+
+/* 🔥 CONFIRMAR */
+function confirmar(id){
+db.collection("citas").doc(id).update({
+estado:"confirmado"
+});
+}
+
+/* 🔥 WHATSAPP */
+function contactar(num){
+window.open(`https://wa.me/${num}`);
+}
+
+</script>
+
+</body>
+</html>
