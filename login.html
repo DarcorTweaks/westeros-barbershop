@@ -1,3 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso Westeros</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body{
+background:
+linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)),
+url('login-bg.jpg');
+background-size:cover;
+background-position:center;
+color:white;
+font-family:system-ui;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.box{
+background:rgba(0,0,0,0.7);
+backdrop-filter:blur(10px);
+border:1px solid #d4af37;
+padding:25px;
+border-radius:16px;
+width:90%;
+max-width:360px;
+text-align:center;
+}
+
 select,input{
 width:100%;
 padding:12px;
@@ -32,7 +67,6 @@ cursor:pointer;
 
 <h1 class="text-yellow-400 mb-3">Acceso del Reino</h1>
 
-<select id="usuario" class="w-full p-2 bg-black border rounded text-white">
 <option>Stark</option>
 <option>Targaryen</option>
 <option>Lannister</option>
@@ -64,7 +98,7 @@ Stark:"1234",
 Targaryen:"1234",
 Lannister:"1234",
 Baratheon:"1234",
-"Guardia Nocturna":"1234"
+Greyjoy:"1234"
 };
 
 function login(){
