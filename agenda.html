@@ -50,6 +50,7 @@ margin-top:10px;
 
 .gold{background:#d4af37;color:black;}
 .green{background:#065f46;}
+.red{background:#991b1b;}
 </style>
 </head>
 
@@ -62,13 +63,20 @@ window.location.href='login.html';
 }
 </script>
 
-<h1 class="text-yellow-400 text-xl mb-3">📜 Agenda</h1>
+<!-- 🔥 HEADER CON BOTÓN -->
+<div class="flex justify-between items-center mb-3">
+<h1 class="text-yellow-400 text-xl">📜 Agenda</h1>
+
+<button onclick="salir()" class="bg-red-700 px-3 py-1 rounded text-sm">
+Cambiar barbero
+</button>
+</div>
 
 <div id="lista"></div>
 
 <script>
 
-/* 🔥 FIREBASE SEGURO */
+/* 🔥 FIREBASE */
 if (!firebase.apps.length) {
 firebase.initializeApp({
 apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
@@ -79,16 +87,16 @@ projectId:"westeros-barbershop"
 
 const db = firebase.firestore();
 
-/* 🔥 FONDOS POR CASA */
+/* 🔥 FONDOS */
 let fondos = {
 Stark:"stark.jpg",
 Targaryen:"targaryen.jpg",
 Lannister:"lannister.jpg",
 Baratheon:"baratheon.jpg",
-Greyjoy:"greyjoy.jpg"
+"Guardia Nocturna":"greyjoy.jpg"
 };
 
-/* 🔥 APLICAR FONDO BIEN (SIN ERRORES) */
+/* 🔥 FONDO */
 let fondoActual = fondos[barbero] || "fondo.jpg";
 
 document.body.style.backgroundImage = `
@@ -101,8 +109,23 @@ document.body.style.backgroundPosition = "center";
 document.body.style.backgroundRepeat = "no-repeat";
 document.body.style.backgroundAttachment = "fixed";
 
-/* 🔥 RENDER */
+/* 🔊 SONIDO */
+let primeraCarga = true;
+let totalAnterior = 0;
+let audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
+
+/* 🔥 TIEMPO REAL */
 db.collection("citas").onSnapshot(snap=>{
+
+let totalActual = snap.size;
+
+/* 🔊 NOTIFICACIÓN */
+if(!primeraCarga && totalActual > totalAnterior){
+audio.play();
+}
+
+totalAnterior = totalActual;
+primeraCarga = false;
 
 let cont = document.getElementById("lista");
 cont.innerHTML = "";
@@ -144,6 +167,10 @@ WhatsApp
 
 </div>
 
+<button onclick="eliminar('${doc.id}')" class="btn red w-full">
+Eliminar cita
+</button>
+
 </div>
 `;
 
@@ -160,9 +187,22 @@ estado:"confirmado"
 });
 }
 
+/* 🔥 ELIMINAR */
+function eliminar(id){
+if(confirm("¿Eliminar esta cita?")){
+db.collection("citas").doc(id).delete();
+}
+}
+
 /* 🔥 WHATSAPP */
 function contactar(num){
 window.open(`https://wa.me/${num}`);
+}
+
+/* 🔁 CAMBIAR BARBERO */
+function salir(){
+localStorage.removeItem("barbero");
+window.location.href = "login.html";
 }
 
 </script>
