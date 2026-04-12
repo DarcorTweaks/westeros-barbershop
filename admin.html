@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin 💰</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+body{
+background:#0b0b0b;
+color:white;
+font-family:system-ui;
+}
+.card{
+background:rgba(0,0,0,.6);
+padding:15px;
+border-radius:12px;
+margin-bottom:10px;
+}
+.btn{
+padding:6px 10px;
+border-radius:8px;
+font-size:12px;
+margin-top:5px;
+}
+.gold{background:#d4af37;color:black;}
+.green{background:#065f46;}
+.red{background:#991b1b;}
+</style>
+</head>
+
+<body class="p-4">
+
+<h1 class="text-yellow-400 text-xl mb-3">💰 Panel Admin</h1>
+
+<div id="barberos"></div>
+
+<hr class="my-4">
+
+<h2 class="text-yellow-400">📊 Resumen</h2>
+<div id="resumen"></div>
+
+<hr class="my-4">
+
+<h2 class="text-yellow-400">💱 Conversión</h2>
+
+<div class="card">
+<input id="usd" placeholder="USD" class="w-full p-2 bg-black border mb-2">
+
+<button onclick="convertir()" class="btn gold w-full">Convertir</button>
+
+<div id="conversion" class="mt-2"></div>
+</div>
+
+<script>
+
+/* 🔥 FIREBASE */
+firebase.initializeApp({
+apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
+authDomain:"westeros-barbershop.firebaseapp.com",
+projectId:"westeros-barbershop"
+});
+
+const db = firebase.firestore();
+
+/* 💈 BARBEROS */
+let listaBarberos = [
+"Stark",
+"Targaryen",
+"Lannister",
+"Baratheon",
+"Guardia Nocturna"
+];
+
+/* 🔥 RENDER */
+function cargar(){
+
+db.collection("pagos").onSnapshot(snap=>{
+
+let cont = document.getElementById("barberos");
+cont.innerHTML = "";
+
+let total = 0;
+
+listaBarberos.forEach(nombre=>{
+
+let deuda = 40;
+let abonado = 0;
+
+snap.forEach(doc=>{
+let d = doc.data();
+if(d.barbero == nombre){
+abonado += d.monto;
+}
+});
+
+let restante = deuda - abonado;
+if(restante < 0) restante = 0;
+
+total += abonado;
+
+cont.innerHTML += `
+<div class="card">
+
+<div class="text-yellow-400">${nombre}</div>
+
+<div>Abonado: $${abonado}</div>
+<div>Restante: $${restante}</div>
+
+<button onclick="abonar('${nombre}')" class="btn green">Abonar</button>
+<button onclick="liquidar('${nombre}')" class="btn gold">Liquidar</button>
+
+</div>
+`;
+
+});
+
+document.getElementById("resumen").innerHTML = `
+<div class="card">
+Ingresos: $${total}
+</div>
+`;
+
+});
+
+}
+
+/* 💰 ABONAR */
+function abonar(nombre){
+
+let monto = prompt("Monto a abonar:");
+if(!monto) return;
+
+db.collection("pagos").add({
+barbero:nombre,
+monto:parseFloat(monto),
+fecha:new Date()
+});
+
+}
+
+/* 💰 LIQUIDAR */
+function liquidar(nombre){
+
+if(confirm("¿Liquidar semana?")){
+
+db.collection("pagos").add({
+barbero:nombre,
+monto:40,
+fecha:new Date()
+});
+
+}
+
+}
+
+/* 💱 CONVERSIÓN */
+async function convertir(){
+
+let usd = document.getElementById("usd").value;
+
+/* BCV API */
+let res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+let data = await res.json();
+
+let tasa = data.rates.VES;
+
+/* USDT (más caro) */
+let usdtRate = tasa * 1.05;
+
+let bs = usd * tasa;
+let usdt = bs / usdtRate;
+
+document.getElementById("conversion").innerHTML = `
+BCV: ${tasa.toFixed(2)} Bs<br>
+USD → Bs: ${bs.toFixed(2)}<br>
+Bs → USDT: ${usdt.toFixed(2)}
+`;
+
+}
+
+cargar();
+
+</script>
+
+</body>
+</html>
