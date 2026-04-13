@@ -11,22 +11,51 @@
 
 <style>
 body{
-background:linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.9)),url('fondo.jpg');
+background:
+linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)),
+url('fondo.jpg');
 background-size:cover;
-color:#d4af37;
+background-position:center;
+background-attachment:fixed;
+color:white;
 font-family:system-ui;
 }
+
+/* TARJETAS */
 .card{
-background:rgba(0,0,0,0.6);
-border:1px solid rgba(212,175,55,0.2);
-border-radius:16px;
+background:rgba(20,20,20,0.75);
+backdrop-filter:blur(6px);
+border-radius:18px;
 padding:15px;
 margin-bottom:12px;
+box-shadow:0 4px 15px rgba(0,0,0,0.5);
 }
-.btn{padding:6px;border-radius:8px;font-size:12px;}
+
+/* TARJETA DESTACADA */
+.bank{
+background:linear-gradient(145deg,#d4af37,#f5d97b);
+color:black;
+font-weight:bold;
+}
+
+/* BOTONES */
+.btn{
+padding:6px;
+border-radius:10px;
+font-size:12px;
+transition:0.2s;
+}
+.btn:hover{transform:scale(1.05);}
+
 .gold{background:#d4af37;color:black;}
-.green{background:#065f46;color:white;}
-.blue{background:#1e3a8a;color:white;}
+.green{background:#16a34a;color:white;}
+.red{background:#dc2626;color:white;}
+.blue{background:#2563eb;color:white;}
+
+/* TEXTOS */
+.title{font-size:13px;opacity:0.7;}
+.big{font-size:20px;font-weight:bold;}
+
 .tab{padding:8px;border-radius:10px;background:#111;}
 .active{background:#d4af37;color:black;}
 </style>
@@ -59,27 +88,32 @@ margin-bottom:12px;
 <!-- FINANZAS -->
 <div id="finanzas" style="display:none;">
 
-<div class="grid grid-cols-2 gap-2">
+<div class="grid grid-cols-2 gap-3">
 
-<div class="card text-center">
-Ingresos<br><span id="ingresos">$0</span>
+<div class="card bank">
+<div class="title">Ingresos</div>
+<div class="big" id="ingresos">$0</div>
 </div>
 
-<div class="card text-center">
-Gastos<br><span id="gastos">$0</span>
+<div class="card">
+<div class="title">Gastos</div>
+<div class="big text-red-400" id="gastos">$0</div>
 </div>
 
-<div class="card text-center">
-USDT<br><span id="wallet">0</span>
+<div class="card">
+<div class="title">USDT</div>
+<div class="big text-green-400" id="wallet">0</div>
 <button onclick="comprarUSDT()" class="btn gold w-full mt-2">Comprar</button>
 </div>
 
-<div class="card text-center">
-Efectivo<br><span id="efectivo">$0</span>
+<div class="card">
+<div class="title">Efectivo</div>
+<div class="big text-yellow-400" id="efectivo">$0</div>
 </div>
 
-<div class="card text-center col-span-2">
-Ganancia Real<br><span id="ganancia">$0</span>
+<div class="card col-span-2">
+<div class="title">Ganancia Real</div>
+<div class="big text-green-400" id="ganancia">$0</div>
 </div>
 
 </div>
@@ -88,14 +122,10 @@ Ganancia Real<br><span id="ganancia">$0</span>
 <canvas id="grafico"></canvas>
 </div>
 
-<!-- 📊 REPORTE -->
 <div class="card">
 <h3>📊 Reporte del Mes</h3>
-<div id="reporteMes">Cargando...</div>
-
-<button onclick="exportarReporte()" class="btn gold w-full mt-2">
-Exportar reporte
-</button>
+<div id="reporteMes"></div>
+<button onclick="exportarReporte()" class="btn gold w-full mt-2">Exportar</button>
 </div>
 
 </div>
@@ -113,12 +143,12 @@ panel.style.display="block";
 }
 
 /* MES */
-mes.value = new Date().toISOString().slice(0,7);
+mes.value=new Date().toISOString().slice(0,7);
 
 /* TABS */
 function tab(x){
-cobranza.style.display = x=="c"?"block":"none";
-finanzas.style.display = x=="f"?"block":"none";
+cobranza.style.display=x=="c"?"block":"none";
+finanzas.style.display=x=="f"?"block":"none";
 }
 
 /* FIREBASE */
@@ -126,19 +156,18 @@ firebase.initializeApp({
 apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
 projectId:"westeros-barbershop"
 });
-const db = firebase.firestore();
+const db=firebase.firestore();
 
 /* DATA */
 let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
 let logos=["stark.png","targaryen.png","lannister.png","baratheon.png","night.png"];
 
-/* RENDER */
+/* COBRANZA */
 function render(){
-
 db.collection("pagos").onSnapshot(snap=>{
 
 sillas.innerHTML="";
-let mesSel = mes.value;
+let mesSel=mes.value;
 
 nombres.forEach((n,i)=>{
 
@@ -147,15 +176,13 @@ let historial="";
 
 snap.forEach(doc=>{
 let d=doc.data();
-
 if(d.barbero==n && d.mes==mesSel){
-
 semanas[d.semana-1]+=d.monto;
 
-let fecha=new Date(d.fecha);
+let f=new Date(d.fecha);
 historial+=`
 <div style="display:flex;justify-content:space-between;font-size:12px;">
-<span>${fecha.toLocaleDateString()} - $${d.monto}</span>
+<span>${f.toLocaleDateString()} - $${d.monto}</span>
 <button onclick="eliminar('${doc.id}')" style="color:red;">❌</button>
 </div>`;
 }
@@ -165,7 +192,6 @@ let total=semanas.reduce((a,b)=>a+b,0);
 let restante=160-total;
 
 let semanasHTML="";
-
 for(let s=0;s<4;s++){
 let pagado=semanas[s]>=40;
 
@@ -173,7 +199,10 @@ semanasHTML+=`
 <div style="border-bottom:1px solid #333;padding:5px;">
 <div style="display:flex;justify-content:space-between;">
 <span>Semana ${s+1}</span>
-<span>${pagado?"✔ $40":"❌ $"+semanas[s]}</span>
+<span>${pagado
+? "<span style='color:#22c55e'>✔ $40</span>"
+: "<span style='color:#ef4444'>❌ $"+semanas[s]+"</span>"}
+</span>
 </div>
 <div style="display:flex;gap:5px;">
 <button onclick="abonar('${n}',${s+1})" class="btn green">Abonar</button>
@@ -186,8 +215,7 @@ sillas.innerHTML+=`
 <div class="card text-center">
 
 <img src="${logos[i]}" style="width:50px;margin:auto;">
-
-<h3>${n}</h3>
+<div class="big">${n}</div>
 
 ${semanasHTML}
 
@@ -199,9 +227,7 @@ Debe: $${restante}
 <button onclick="editar(${i})" class="btn gold w-full mt-1">Editar</button>
 <button onclick="recibo('${n}',${total},${restante})" class="btn blue w-full mt-1">Recibo</button>
 
-<div class="mt-2 text-left">
-${historial||"Sin pagos"}
-</div>
+<div class="mt-2 text-left">${historial||"Sin pagos"}</div>
 
 </div>`;
 });
@@ -236,61 +262,50 @@ window.open("https://wa.me/?text="+encodeURIComponent(msg));
 
 /* USDT */
 function comprarUSDT(){
-let monto=prompt("Monto a convertir:");
-if(!monto) return;
+let m=prompt("Monto:");
+if(!m) return;
 
-db.collection("usdt").add({monto:+monto,fecha:new Date()});
-db.collection("gastos").add({concepto:"Compra USDT",monto:+monto,fecha:new Date()});
+db.collection("usdt").add({monto:+m,fecha:new Date()});
+db.collection("gastos").add({concepto:"Compra USDT",monto:+m,fecha:new Date()});
 }
 
 /* DASHBOARD + REPORTE */
-function actualizarTodo(){
+function actualizar(){
 
-let mesSel = mes.value;
+let mesSel=mes.value;
 
 db.collection("pagos").get().then(p=>{
-
 let ingresos=0;
-p.forEach(d=>{
-let x=d.data();
-if(x.mes==mesSel) ingresos+=x.monto;
-});
+p.forEach(d=>{if(d.data().mes==mesSel) ingresos+=d.data().monto;});
 
 db.collection("gastos").get().then(g=>{
-
 let gastos=0;
 g.forEach(d=>{
-let x=d.data();
-let m=new Date(x.fecha).toISOString().slice(0,7);
-if(m==mesSel) gastos+=x.monto;
+let m=new Date(d.data().fecha).toISOString().slice(0,7);
+if(m==mesSel) gastos+=d.data().monto;
 });
 
 db.collection("usdt").get().then(u=>{
-
 let usdt=0;
 u.forEach(d=>{
-let x=d.data();
-let m=new Date(x.fecha).toISOString().slice(0,7);
-if(m==mesSel) usdt+=x.monto;
+let m=new Date(d.data().fecha).toISOString().slice(0,7);
+if(m==mesSel) usdt+=d.data().monto;
 });
 
 let efectivo=ingresos-gastos-usdt;
 let ganancia=ingresos-gastos;
 
-/* DASHBOARD */
 ingresos.innerText="$"+ingresos;
 gastos.innerText="$"+gastos;
 wallet.innerText=usdt;
 efectivo.innerText="$"+efectivo;
 ganancia.innerText="$"+ganancia;
 
-/* REPORTE */
 reporteMes.innerHTML=`
-Mes: ${mesSel}<br><br>
+Mes: ${mesSel}<br>
 Ingresos: $${ingresos}<br>
 Gastos: $${gastos}<br>
 USDT: $${usdt}<br>
-<hr>
 Ganancia: $${ganancia}<br>
 Efectivo: $${efectivo}
 `;
@@ -304,40 +319,30 @@ Efectivo: $${efectivo}
 
 /* EXPORTAR */
 function exportarReporte(){
-let texto=reporteMes.innerText;
-let blob=new Blob([texto],{type:"text/plain"});
-let link=document.createElement("a");
-link.href=URL.createObjectURL(blob);
-link.download="reporte.txt";
-link.click();
+let blob=new Blob([reporteMes.innerText]);
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="reporte.txt";
+a.click();
 }
 
 /* GRAFICO */
 let chart;
 db.collection("pagos").onSnapshot(p=>{
 let data=[0,0,0,0,0];
-
 p.forEach(d=>{
 let i=nombres.indexOf(d.data().barbero);
 if(i>=0) data[i]+=d.data().monto;
 });
-
 if(chart) chart.destroy();
-
-chart=new Chart(grafico,{
-type:"bar",
-data:{labels:nombres,datasets:[{data:data}]}
-});
+chart=new Chart(grafico,{type:"bar",data:{labels:nombres,datasets:[{data:data}]}})
 });
 
 /* EVENTOS */
-mes.addEventListener("change",()=>{
-render();
-actualizarTodo();
-});
+mes.addEventListener("change",()=>{render();actualizar();});
 
 render();
-actualizarTodo();
+actualizar();
 
 </script>
 
