@@ -3,187 +3,341 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin 💰</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
 body{
-background:#0b0b0b;
-color:white;
+background:linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.9)),url('fondo.jpg');
+background-size:cover;
+color:#d4af37;
 font-family:system-ui;
 }
 .card{
-background:rgba(0,0,0,.6);
+background:rgba(0,0,0,0.6);
+border:1px solid rgba(212,175,55,0.2);
+border-radius:16px;
 padding:15px;
-border-radius:12px;
-margin-bottom:10px;
+margin-bottom:12px;
 }
-.btn{
-padding:6px 10px;
-border-radius:8px;
-font-size:12px;
-margin-top:5px;
-}
+.btn{padding:6px;border-radius:8px;font-size:12px;}
 .gold{background:#d4af37;color:black;}
-.green{background:#065f46;}
-.red{background:#991b1b;}
+.green{background:#065f46;color:white;}
+.blue{background:#1e3a8a;color:white;}
+.tab{padding:8px;border-radius:10px;background:#111;}
+.active{background:#d4af37;color:black;}
 </style>
 </head>
 
 <body class="p-4">
 
-<h1 class="text-yellow-400 text-xl mb-3">💰 Panel Admin</h1>
+<!-- LOGIN -->
+<div id="login" class="flex flex-col items-center justify-center h-screen">
+<img src="logo.png" style="width:100px;">
+<input id="pin" type="password" class="p-2 bg-black border text-center mt-2">
+<button onclick="entrar()" class="btn gold mt-2">Entrar</button>
+</div>
 
-<div id="barberos"></div>
+<div id="panel" style="display:none;">
 
-<hr class="my-4">
+<div class="flex gap-2 mb-3">
+<button onclick="tab('c')" class="tab active">Cobranza</button>
+<button onclick="tab('f')" class="tab">Finanzas</button>
+</div>
 
-<h2 class="text-yellow-400">📊 Resumen</h2>
-<div id="resumen"></div>
+<!-- COBRANZA -->
+<div id="cobranza">
+<div class="card">
+<input type="month" id="mes" class="w-full p-2 bg-black text-white">
+</div>
+<div id="sillas"></div>
+</div>
 
-<hr class="my-4">
+<!-- FINANZAS -->
+<div id="finanzas" style="display:none;">
 
-<h2 class="text-yellow-400">💱 Conversión</h2>
+<div class="grid grid-cols-2 gap-2">
+
+<div class="card text-center">
+Ingresos<br><span id="ingresos">$0</span>
+</div>
+
+<div class="card text-center">
+Gastos<br><span id="gastos">$0</span>
+</div>
+
+<div class="card text-center">
+USDT<br><span id="wallet">0</span>
+<button onclick="comprarUSDT()" class="btn gold w-full mt-2">Comprar</button>
+</div>
+
+<div class="card text-center">
+Efectivo<br><span id="efectivo">$0</span>
+</div>
+
+<div class="card text-center col-span-2">
+Ganancia Real<br><span id="ganancia">$0</span>
+</div>
+
+</div>
 
 <div class="card">
-<input id="usd" placeholder="USD" class="w-full p-2 bg-black border mb-2">
+<canvas id="grafico"></canvas>
+</div>
 
-<button onclick="convertir()" class="btn gold w-full">Convertir</button>
+<!-- 📊 REPORTE -->
+<div class="card">
+<h3>📊 Reporte del Mes</h3>
+<div id="reporteMes">Cargando...</div>
 
-<div id="conversion" class="mt-2"></div>
+<button onclick="exportarReporte()" class="btn gold w-full mt-2">
+Exportar reporte
+</button>
+</div>
+
+</div>
+
 </div>
 
 <script>
 
-/* 🔥 FIREBASE */
+/* LOGIN */
+function entrar(){
+if(pin.value=="2210"){
+login.style.display="none";
+panel.style.display="block";
+}
+}
+
+/* MES */
+mes.value = new Date().toISOString().slice(0,7);
+
+/* TABS */
+function tab(x){
+cobranza.style.display = x=="c"?"block":"none";
+finanzas.style.display = x=="f"?"block":"none";
+}
+
+/* FIREBASE */
 firebase.initializeApp({
 apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
-authDomain:"westeros-barbershop.firebaseapp.com",
 projectId:"westeros-barbershop"
 });
-
 const db = firebase.firestore();
 
-/* 💈 BARBEROS */
-let listaBarberos = [
-"Stark",
-"Targaryen",
-"Lannister",
-"Baratheon",
-"Guardia Nocturna"
-];
+/* DATA */
+let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
+let logos=["stark.png","targaryen.png","lannister.png","baratheon.png","night.png"];
 
-/* 🔥 RENDER */
-function cargar(){
+/* RENDER */
+function render(){
 
 db.collection("pagos").onSnapshot(snap=>{
 
-let cont = document.getElementById("barberos");
-cont.innerHTML = "";
+sillas.innerHTML="";
+let mesSel = mes.value;
 
-let total = 0;
+nombres.forEach((n,i)=>{
 
-listaBarberos.forEach(nombre=>{
-
-let deuda = 40;
-let abonado = 0;
+let semanas=[0,0,0,0];
+let historial="";
 
 snap.forEach(doc=>{
-let d = doc.data();
-if(d.barbero == nombre){
-abonado += d.monto;
+let d=doc.data();
+
+if(d.barbero==n && d.mes==mesSel){
+
+semanas[d.semana-1]+=d.monto;
+
+let fecha=new Date(d.fecha);
+historial+=`
+<div style="display:flex;justify-content:space-between;font-size:12px;">
+<span>${fecha.toLocaleDateString()} - $${d.monto}</span>
+<button onclick="eliminar('${doc.id}')" style="color:red;">❌</button>
+</div>`;
 }
 });
 
-let restante = deuda - abonado;
-if(restante < 0) restante = 0;
+let total=semanas.reduce((a,b)=>a+b,0);
+let restante=160-total;
 
-total += abonado;
+let semanasHTML="";
 
-cont.innerHTML += `
-<div class="card">
+for(let s=0;s<4;s++){
+let pagado=semanas[s]>=40;
 
-<div class="text-yellow-400">${nombre}</div>
-
-<div>Abonado: $${abonado}</div>
-<div>Restante: $${restante}</div>
-
-<button onclick="abonar('${nombre}')" class="btn green">Abonar</button>
-<button onclick="liquidar('${nombre}')" class="btn gold">Liquidar</button>
-
+semanasHTML+=`
+<div style="border-bottom:1px solid #333;padding:5px;">
+<div style="display:flex;justify-content:space-between;">
+<span>Semana ${s+1}</span>
+<span>${pagado?"✔ $40":"❌ $"+semanas[s]}</span>
 </div>
-`;
-
-});
-
-document.getElementById("resumen").innerHTML = `
-<div class="card">
-Ingresos: $${total}
+<div style="display:flex;gap:5px;">
+<button onclick="abonar('${n}',${s+1})" class="btn green">Abonar</button>
+<button onclick="liquidar('${n}',${s+1})" class="btn gold">Liquidar</button>
 </div>
-`;
-
-});
-
+</div>`;
 }
 
-/* 💰 ABONAR */
-function abonar(nombre){
+sillas.innerHTML+=`
+<div class="card text-center">
 
-let monto = prompt("Monto a abonar:");
+<img src="${logos[i]}" style="width:50px;margin:auto;">
+
+<h3>${n}</h3>
+
+${semanasHTML}
+
+<hr>
+
+Total: $${total}<br>
+Debe: $${restante}
+
+<button onclick="editar(${i})" class="btn gold w-full mt-1">Editar</button>
+<button onclick="recibo('${n}',${total},${restante})" class="btn blue w-full mt-1">Recibo</button>
+
+<div class="mt-2 text-left">
+${historial||"Sin pagos"}
+</div>
+
+</div>`;
+});
+
+});
+}
+
+/* FUNCIONES */
+function abonar(n,s){
+let m=prompt("Monto:");
+db.collection("pagos").add({barbero:n,semana:s,monto:+m,mes:mes.value,fecha:new Date()});
+}
+
+function liquidar(n,s){
+db.collection("pagos").add({barbero:n,semana:s,monto:40,mes:mes.value,fecha:new Date()});
+}
+
+function eliminar(id){
+db.collection("pagos").doc(id).delete();
+}
+
+function editar(i){
+let x=prompt("Nombre:");
+if(x) nombres[i]=x;
+render();
+}
+
+function recibo(n,t,r){
+let msg=`💈 ${n}\nPagado: $${t}\nDebe: $${r}`;
+window.open("https://wa.me/?text="+encodeURIComponent(msg));
+}
+
+/* USDT */
+function comprarUSDT(){
+let monto=prompt("Monto a convertir:");
 if(!monto) return;
 
-db.collection("pagos").add({
-barbero:nombre,
-monto:parseFloat(monto),
-fecha:new Date()
+db.collection("usdt").add({monto:+monto,fecha:new Date()});
+db.collection("gastos").add({concepto:"Compra USDT",monto:+monto,fecha:new Date()});
+}
+
+/* DASHBOARD + REPORTE */
+function actualizarTodo(){
+
+let mesSel = mes.value;
+
+db.collection("pagos").get().then(p=>{
+
+let ingresos=0;
+p.forEach(d=>{
+let x=d.data();
+if(x.mes==mesSel) ingresos+=x.monto;
 });
 
-}
+db.collection("gastos").get().then(g=>{
 
-/* 💰 LIQUIDAR */
-function liquidar(nombre){
-
-if(confirm("¿Liquidar semana?")){
-
-db.collection("pagos").add({
-barbero:nombre,
-monto:40,
-fecha:new Date()
+let gastos=0;
+g.forEach(d=>{
+let x=d.data();
+let m=new Date(x.fecha).toISOString().slice(0,7);
+if(m==mesSel) gastos+=x.monto;
 });
 
-}
+db.collection("usdt").get().then(u=>{
 
-}
+let usdt=0;
+u.forEach(d=>{
+let x=d.data();
+let m=new Date(x.fecha).toISOString().slice(0,7);
+if(m==mesSel) usdt+=x.monto;
+});
 
-/* 💱 CONVERSIÓN */
-async function convertir(){
+let efectivo=ingresos-gastos-usdt;
+let ganancia=ingresos-gastos;
 
-let usd = document.getElementById("usd").value;
+/* DASHBOARD */
+ingresos.innerText="$"+ingresos;
+gastos.innerText="$"+gastos;
+wallet.innerText=usdt;
+efectivo.innerText="$"+efectivo;
+ganancia.innerText="$"+ganancia;
 
-/* BCV API */
-let res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
-let data = await res.json();
-
-let tasa = data.rates.VES;
-
-/* USDT (más caro) */
-let usdtRate = tasa * 1.05;
-
-let bs = usd * tasa;
-let usdt = bs / usdtRate;
-
-document.getElementById("conversion").innerHTML = `
-BCV: ${tasa.toFixed(2)} Bs<br>
-USD → Bs: ${bs.toFixed(2)}<br>
-Bs → USDT: ${usdt.toFixed(2)}
+/* REPORTE */
+reporteMes.innerHTML=`
+Mes: ${mesSel}<br><br>
+Ingresos: $${ingresos}<br>
+Gastos: $${gastos}<br>
+USDT: $${usdt}<br>
+<hr>
+Ganancia: $${ganancia}<br>
+Efectivo: $${efectivo}
 `;
 
+});
+
+});
+
+});
 }
 
-cargar();
+/* EXPORTAR */
+function exportarReporte(){
+let texto=reporteMes.innerText;
+let blob=new Blob([texto],{type:"text/plain"});
+let link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download="reporte.txt";
+link.click();
+}
+
+/* GRAFICO */
+let chart;
+db.collection("pagos").onSnapshot(p=>{
+let data=[0,0,0,0,0];
+
+p.forEach(d=>{
+let i=nombres.indexOf(d.data().barbero);
+if(i>=0) data[i]+=d.data().monto;
+});
+
+if(chart) chart.destroy();
+
+chart=new Chart(grafico,{
+type:"bar",
+data:{labels:nombres,datasets:[{data:data}]}
+});
+});
+
+/* EVENTOS */
+mes.addEventListener("change",()=>{
+render();
+actualizarTodo();
+});
+
+render();
+actualizarTodo();
 
 </script>
 
