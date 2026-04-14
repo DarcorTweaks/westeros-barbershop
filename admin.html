@@ -26,7 +26,18 @@ font-family:system-ui;
 .blue{background:#2563eb;color:white;}
 .tab{padding:8px;border-radius:10px;background:#111;}
 .tab.active{background:#d4af37;color:black;}
-.big{font-size:20px;font-weight:bold;}
+.big{
+font-size:18px;
+font-weight:bold;
+}
+@media (max-width:600px){
+.big{
+font-size:14px;
+}
+.bank{
+padding:10px;
+}
+}
 </style>
 </head>
 
@@ -384,6 +395,33 @@ monto:+m,
 fecha: f ? new Date(f) : new Date()
 });
 }
+
+function guardarGasto(){
+let fecha = document.getElementById("fechaGasto").value;
+let concepto = document.getElementById("conceptoGasto").value;
+let monto = document.getElementById("montoGasto").value;
+
+if(!concepto || !monto){
+alert("Completa los datos");
+return;
+}
+
+db.collection("gastos").add({
+nombre: concepto,
+monto: Number(monto),
+fecha: fecha ? new Date(fecha) : new Date()
+});
+
+document.getElementById("fechaGasto").value="";
+document.getElementById("conceptoGasto").value="";
+document.getElementById("montoGasto").value="";
+
+alert("Gasto guardado");
+
+actualizar();
+renderGastos();
+}
+
 
 /* 🔥 USDT MEJORADO (USA DISPONIBLE AUTOMÁTICO) */
 function comprarUSDT(){
