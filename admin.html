@@ -26,18 +26,7 @@ font-family:system-ui;
 .blue{background:#2563eb;color:white;}
 .tab{padding:8px;border-radius:10px;background:#111;}
 .tab.active{background:#d4af37;color:black;}
-.big{
-font-size:18px;
-font-weight:bold;
-}
-@media (max-width:600px){
-.big{
-font-size:14px;
-}
-.bank{
-padding:10px;
-}
-}
+.big{font-size:20px;font-weight:bold;}
 </style>
 </head>
 
@@ -80,7 +69,7 @@ Tasa: <span id="tasaBCV">Cargando...</span>
 <div class="grid grid-cols-2 gap-3">
 
 <div class="card bank">
-<div class="title">Ingresos</div>
+<div class="title">Ingresos Brutos</div>
 <div class="big" id="ingresos">$0</div>
 </div>
 
@@ -208,8 +197,13 @@ const db=firebase.firestore();
 let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
 let logos=["stark.png","targaryen.png","lannister.png","baratheon.png","night.png"];
 
+let unsubscribePagos = null;
+
 function render(){
-db.collection("pagos").onSnapshot(snap=>{
+
+if(unsubscribePagos){unsubscribePagos();}
+
+unsubscribePagos = db.collection("pagos").onSnapshot(snap=>{
 
 sillas.innerHTML="";
 let mesSel=mes.value;
@@ -229,7 +223,7 @@ historial+=`
 <div style="display:flex;justify-content:space-between;font-size:12px;">
 <span>${f.toLocaleDateString()} - ${simbolo()}${d.monto}</span>
 <button onclick="eliminar('${doc.id}')" style="color:red;">❌</button>
-</div>`;
+</div></div>`;
 }
 });
 
@@ -253,10 +247,10 @@ semanasHTML+=`
 <button onclick="abonar('${n}',${s+1})" class="btn green">Abonar</button>
 <button onclick="liquidar('${n}',${s+1})" class="btn gold">Liquidar</button>
 </div>
-</div>`;
+</div></div>`;
 }
 
-sillas.innerHTML+=`
+sillas.innerHTML+=`<div style="margin-bottom:10px;">
 <div class="card text-center">
 
 <img src="${logos[i]}" style="width:50px;margin:auto;">
@@ -279,10 +273,9 @@ Debe: ${simbolo()}${restante}<br>
 
 <div class="mt-2 text-left">${historial||"Sin pagos"}</div>
 
-</div>`;
+</div></div>`;
 });
 
-actualizar();
 });
 }
 
@@ -416,8 +409,6 @@ document.getElementById("fechaGasto").value="";
 document.getElementById("conceptoGasto").value="";
 document.getElementById("montoGasto").value="";
 
-alert("Gasto guardado");
-
 actualizar();
 renderGastos();
 }
@@ -514,7 +505,7 @@ html+=`
 <div>
 ${fecha.toLocaleDateString()} - ${d.nombre} - ${simbolo()}${d.monto}
 <button onclick="eliminarGasto('${doc.id}')">❌</button>
-</div>`;
+</div></div>`;
 });
 
 listaGastos.innerHTML=html || "Sin gastos";
