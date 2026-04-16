@@ -96,8 +96,19 @@ transition:0.2s;
 </div>
 
 <div class="card">
-<div class="title">Gastos</div>
-<div class="big text-red-400" id="gastos">$0</div>
+  <div class="title">Gastos</div>
+  <div class="big text-red-400" id="gastos">$0</div>
+
+  <!-- FORMULARIO GASTOS -->
+  <input id="gastoConcepto" class="w-full p-2 mt-2 bg-black border" placeholder="Concepto del gasto">
+
+  <input id="gastoFecha" type="date" class="w-full p-2 mt-2 bg-black border">
+
+  <input id="gastoMonto" type="number" class="w-full p-2 mt-2 bg-black border" placeholder="Monto">
+
+  <button onclick="agregarGasto()" class="btn red w-full mt-2">
+    Agregar Gasto
+  </button>
 </div>
 
 <div class="card">
@@ -149,6 +160,10 @@ const ganancia = document.getElementById("ganancia");
 const reporteMes = document.getElementById("reporteMes");
 
 const graficoEl = document.getElementById("grafico");
+const gastoConcepto = document.getElementById("gastoConcepto");
+const gastoFecha = document.getElementById("gastoFecha");
+gastoFecha.value = new Date().toISOString().slice(0,10);
+const gastoMonto = document.getElementById("gastoMonto");
 
 /* LOGIN */
 function entrar(){
@@ -173,6 +188,7 @@ firebase.initializeApp({
   projectId:"westeros-barbershop"
 });
 const db = firebase.firestore();
+
 
 /* DATA */
 let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
@@ -329,89 +345,57 @@ let usdtV = 0;
 let gastosHTML = "";
 let usdtHTML = "";
 
-/* =========================
-   PAGOS (INGRESOS)
-========================= */
-db.collection("pagos").get().then(p=>{
+Promise.all([
 
+db.collection("pagos").where("mes","==",mesSel).get(),
+
+db.collection("gastos").where("mes","==",mesSel).get(),
+
+db.collection("usdt").where("mes","==",mesSel).get()
+
+]).then(([p,g,u])=>{
+
+/* INGRESOS */
 p.forEach(d=>{
-let data = d.data();
-
-if(data.mes === mesSel){
-ingresosV += Number(data.monto || 0);
-}
+  ingresosV += Number(d.data().monto || 0);
 });
 
-/* =========================
-   GASTOS (LISTA + TOTAL)
-========================= */
-db.collection("gastos").get().then(g=>{
-
+/* GASTOS */
 g.forEach(d=>{
-let data = d.data();
+  let data = d.data();
+  gastosV += Number(data.monto || 0);
 
-if(!data.fecha) return;
-
-let m = new Date(
-  data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha
-).toISOString().slice(0,7);
-
-if(m === mesSel){
-
-gastosV += Number(data.monto || 0);
-
-gastosHTML += `
-<div style="display:flex;justify-content:space-between;font-size:12px;">
-  <span>${data.concepto || "Gasto"} - $${data.monto}</span>
-  <button onclick="eliminarGasto('${d.id}')" style="color:red;">❌</button>
-</div>`;
-}
+  gastosHTML += `
+  <div style="display:flex;justify-content:space-between;font-size:12px;">
+    <span>${data.concepto || "Gasto"} - $${data.monto}</span>
+    <button onclick="eliminarGasto('${d.id}')" style="color:red;">❌</button>
+  </div>`;
 });
 
-/* =========================
-   USDT (LISTA + TOTAL)
-========================= */
-db.collection("usdt").get().then(u=>{
-
+/* USDT */
 u.forEach(d=>{
-let data = d.data();
+  let data = d.data();
+  usdtV += Number(data.usdt || 0);
 
-if(!data.fecha) return;
-
-let m = new Date(
-  data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha
-).toISOString().slice(0,7);
-
-if(m === mesSel){
-
-usdtV += Number(data.usdt || 0);
-
-usdtHTML += `
-<div style="display:flex;justify-content:space-between;font-size:12px;">
-  <span>USDT: ${data.usdt} (BS ${data.bs})</span>
-  <button onclick="eliminarUSDT('${d.id}')" style="color:red;">❌</button>
-</div>`;
-}
+  usdtHTML += `
+  <div style="display:flex;justify-content:space-between;font-size:12px;">
+    <span>USDT: ${data.usdt} (BS ${data.bs})</span>
+    <button onclick="eliminarUSDT('${d.id}')" style="color:red;">❌</button>
+  </div>`;
 });
 
-/* =========================
-   CALCULOS
-========================= */
+/* CALCULOS */
 let efectivoV = ingresosV - gastosV - usdtV;
 let gananciaV = ingresosV - gastosV;
 
-/* =========================
-   UI
-========================= */
+/* UI */
 ingresos.innerText = "$" + ingresosV;
 gastos.innerText = "$" + gastosV;
 wallet.innerText = usdtV;
 efectivo.innerText = "$" + efectivoV;
 ganancia.innerText = "$" + gananciaV;
 
-/* =========================
-   REPORTE
-========================= */
+/* REPORTE */
 reporteMes.innerHTML = `
 Mes: ${mesSel}<br><br>
 
@@ -430,17 +414,9 @@ Efectivo: $${efectivoV}
 `;
 
 });
-});
-});
+
 }
 
-function eliminarGasto(id){
-  db.collection("gastos").doc(id).delete().then(refrescarTodo);
-}
-
-function eliminarUSDT(id){
-  db.collection("usdt").doc(id).delete().then(refrescarTodo);
-}
 </script>
 
 </body>
