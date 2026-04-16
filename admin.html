@@ -179,29 +179,16 @@ let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
 let logos=["stark.png","targaryen.png","lannister.png","baratheon.png","night.png"];
 
 /* LISTENER GLOBAL (IMPORTANTE) */
-db.collection("pagos").onSnapshot(() => {
-  render();
-  actualizar();
-  cargarGrafico();
-});
-
 function refrescarTodo(){
   render();
   actualizar();
   cargarGrafico();
 }
 
-db.collection("pagos").onSnapshot(() => {
-  refrescarTodo();
-});
+db.collection("pagos").onSnapshot(refrescarTodo);
+db.collection("gastos").onSnapshot(refrescarTodo);
+db.collection("usdt").onSnapshot(refrescarTodo);
 
-db.collection("gastos").onSnapshot(() => {
-  refrescarTodo();
-});
-
-db.collection("usdt").onSnapshot(() => {
-  refrescarTodo();
-});
 /* COBRANZA */
 function render(){
   sillas.innerHTML = "";
@@ -309,44 +296,62 @@ function actualizar(){
 
 let mesSel = mes.value;
 
-db.collection("pagos").get().then(p=>{
 let ingresosV = 0;
+let gastosV = 0;
+let usdtV = 0;
+
+/* 🔥 PAGOS */
+db.collection("pagos").get().then(p=>{
 
 p.forEach(d=>{
 let data = d.data();
-if(data.mes == mesSel){
+if(data.mes === mesSel){
 ingresosV += Number(data.monto || 0);
 }
 });
 
+/* 🔥 GASTOS */
 db.collection("gastos").get().then(g=>{
-let gastosV = 0;
 
 g.forEach(d=>{
 let data = d.data();
-let m = new Date(data.fecha).toISOString().slice(0,7);
-if(m == mesSel){
+
+if(!data.fecha) return;
+
+let m = new Date(data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha)
+.toISOString()
+.slice(0,7);
+
+if(m === mesSel){
 gastosV += Number(data.monto || 0);
 }
 });
 
+/* 🔥 USDT */
 db.collection("usdt").get().then(u=>{
-let usdt = 0;
 
 u.forEach(d=>{
 let data = d.data();
-let m = new Date(data.fecha).toISOString().slice(0,7);
-if(m == mesSel){
-usdt += Number(data.monto || 0);
+
+if(!data.fecha) return;
+
+let m = new Date(data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha)
+.toISOString()
+.slice(0,7);
+
+if(m === mesSel){
+usdtV += Number(data.usdt || 0);
 }
 });
 
-let efectivoV = ingresosV - gastosV - usdt;
+/* 🔥 CALCULOS */
+let efectivoV = ingresosV - gastosV - usdtV;
 let gananciaV = ingresosV - gastosV;
 
+/* 🔥 UI */
 ingresos.innerText = "$" + ingresosV;
 gastos.innerText = "$" + gastosV;
-wallet.innerText = usdt;
+wallet.innerText = usdtV;
 efectivo.innerText = "$" + efectivoV;
 ganancia.innerText = "$" + gananciaV;
 
@@ -354,7 +359,7 @@ reporteMes.innerHTML = `
 Mes: ${mesSel}<br>
 Ingresos: $${ingresosV}<br>
 Gastos: $${gastosV}<br>
-USDT: $${usdt}<br>
+USDT: $${usdtV}<br>
 Ganancia: $${gananciaV}<br>
 Efectivo: $${efectivoV}
 `;
@@ -366,44 +371,6 @@ Efectivo: $${efectivoV}
 });
 }
 
-/* GRAFICO */
-let chart;
-
-function cargarGrafico(){
-db.collection("pagos").get().then(p=>{
-let data=[0,0,0,0,0];
-
-p.forEach(d=>{
-let i = nombres.indexOf(d.data().barbero);
-if(i>=0) data[i]+=d.data().monto;
-});
-
-if(chart) chart.destroy();
-
-chart = new Chart(graficoEl,{
-type:"bar",
-data:{labels:nombres,datasets:[{data:data}]}
-});
-
-});
-}
-
-/* INIT */
-mes.addEventListener("change",()=>{
-render();
-actualizar();
-cargarGrafico();
-});
-
-render();
-actualizar();
-cargarGrafico();
-
-render();
-actualizar();
-cargarGrafico();
-
-/* 👇 AQUÍ PEGAS ESTO */
 function comprarUSDT(){
 
 let bs = prompt("Monto en BS:");
@@ -415,21 +382,26 @@ if(!tasa) return;
 let usdt = Number(bs) / Number(tasa);
 
 db.collection("usdt").add({
-bs: Number(bs),
-tasa: Number(tasa),
-usdt: usdt,
-fecha: new Date()
+  bs: Number(bs),
+  tasa: Number(tasa),
+  usdt: usdt,
+  fecha: firebase.firestore.Timestamp.now()
+}).then(() => {
+
+  return db.collection("gastos").add({
+    concepto: "Compra USDT",
+    monto: Number(bs),
+    fecha: firebase.firestore.Timestamp.now()
+  });
+
+}).then(() => {
+
+  refrescarTodo(); // 🔥 actualiza todo bien
+
 });
 
-db.collection("gastos").add({
-concepto:"Compra USDT",
-monto: Number(bs),
-fecha: new Date()
-});
-
-actualizar();
-cargarGrafico();
 }
+
 </script>
 
 </body>
