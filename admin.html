@@ -114,7 +114,8 @@ transition:0.2s;
 <div class="card">
 <div class="title">USDT</div>
 <div class="big text-green-400" id="wallet">0</div>
-<button onclick="comprarUSDT()" class="btn gold w-full mt-2">Comprar</button>
+<button onclick="comprarUSDT()" class="btn gold w-full mt-2">Comprar USDT</button>
+<button onclick="gastarUSDT()" class="btn red w-full mt-2">Usar USDT</button>
 </div>
 
 <div class="card">
@@ -417,6 +418,23 @@ Efectivo: $${efectivoV}
 
 }
 
+function gastarUSDT(){
+
+  let monto = prompt("¿Cuánto USDT vas a usar?");
+
+  if(!monto || isNaN(monto)) return;
+
+  monto = Number(monto);
+
+  db.collection("usdt").add({
+    usdt: -monto,
+    bs: 0,
+    tipo: "salida",
+    mes: mes.value,
+    fecha: new Date()
+  });
+
+}
 </script>
 
 </body>
