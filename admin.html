@@ -245,7 +245,10 @@ function render(){
       <div class="card text-center">
 
         <img src="${logos[i]}" style="width:50px;margin:auto;">
-        <div class="big">${n}</div>
+        <div class="big">
+  ${n}
+  <button onclick="editarBarbero('${n}')" class="btn blue">✏️</button>
+</div>
 
         ${semanasHTML}
 
@@ -291,6 +294,29 @@ function eliminar(id){
   db.collection("pagos").doc(id).delete();
 }
 
+function editarBarbero(nombreViejo){
+  let nuevo = prompt("Nuevo nombre del barbero:", nombreViejo);
+  if(!nuevo || nuevo.trim()=="") return;
+
+  let batch = db.batch();
+
+  db.collection("pagos")
+  .where("barbero","==",nombreViejo)
+  .get().then(snap=>{
+
+    snap.forEach(doc=>{
+      batch.update(doc.ref,{
+        barbero:nuevo.trim()
+      });
+    });
+
+    batch.commit().then(()=>{
+      refrescarTodo();
+    });
+
+  });
+}
+
 /* FINANZAS */
 function actualizar(){
 
@@ -300,17 +326,25 @@ let ingresosV = 0;
 let gastosV = 0;
 let usdtV = 0;
 
-/* 🔥 PAGOS */
+let gastosHTML = "";
+let usdtHTML = "";
+
+/* =========================
+   PAGOS (INGRESOS)
+========================= */
 db.collection("pagos").get().then(p=>{
 
 p.forEach(d=>{
 let data = d.data();
+
 if(data.mes === mesSel){
 ingresosV += Number(data.monto || 0);
 }
 });
 
-/* 🔥 GASTOS */
+/* =========================
+   GASTOS (LISTA + TOTAL)
+========================= */
 db.collection("gastos").get().then(g=>{
 
 g.forEach(d=>{
@@ -318,16 +352,25 @@ let data = d.data();
 
 if(!data.fecha) return;
 
-let m = new Date(data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha)
-.toISOString()
-.slice(0,7);
+let m = new Date(
+  data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha
+).toISOString().slice(0,7);
 
 if(m === mesSel){
+
 gastosV += Number(data.monto || 0);
+
+gastosHTML += `
+<div style="display:flex;justify-content:space-between;font-size:12px;">
+  <span>${data.concepto || "Gasto"} - $${data.monto}</span>
+  <button onclick="eliminarGasto('${d.id}')" style="color:red;">❌</button>
+</div>`;
 }
 });
 
-/* 🔥 USDT */
+/* =========================
+   USDT (LISTA + TOTAL)
+========================= */
 db.collection("usdt").get().then(u=>{
 
 u.forEach(d=>{
@@ -335,73 +378,69 @@ let data = d.data();
 
 if(!data.fecha) return;
 
-let m = new Date(data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha)
-.toISOString()
-.slice(0,7);
+let m = new Date(
+  data.fecha.seconds ? data.fecha.seconds*1000 : data.fecha
+).toISOString().slice(0,7);
 
 if(m === mesSel){
+
 usdtV += Number(data.usdt || 0);
+
+usdtHTML += `
+<div style="display:flex;justify-content:space-between;font-size:12px;">
+  <span>USDT: ${data.usdt} (BS ${data.bs})</span>
+  <button onclick="eliminarUSDT('${d.id}')" style="color:red;">❌</button>
+</div>`;
 }
 });
 
-/* 🔥 CALCULOS */
+/* =========================
+   CALCULOS
+========================= */
 let efectivoV = ingresosV - gastosV - usdtV;
 let gananciaV = ingresosV - gastosV;
 
-/* 🔥 UI */
+/* =========================
+   UI
+========================= */
 ingresos.innerText = "$" + ingresosV;
 gastos.innerText = "$" + gastosV;
 wallet.innerText = usdtV;
 efectivo.innerText = "$" + efectivoV;
 ganancia.innerText = "$" + gananciaV;
 
+/* =========================
+   REPORTE
+========================= */
 reporteMes.innerHTML = `
-Mes: ${mesSel}<br>
+Mes: ${mesSel}<br><br>
+
+<b>Gastos</b><br>
+${gastosHTML || "Sin gastos"}<br><br>
+
+<b>USDT</b><br>
+${usdtHTML || "Sin compras"}<br><br>
+
+<b>Resumen</b><br>
 Ingresos: $${ingresosV}<br>
 Gastos: $${gastosV}<br>
-USDT: $${usdtV}<br>
+USDT: ${usdtV}<br>
 Ganancia: $${gananciaV}<br>
 Efectivo: $${efectivoV}
 `;
 
 });
-
 });
-
 });
 }
 
-function comprarUSDT(){
-
-let bs = prompt("Monto en BS:");
-if(!bs) return;
-
-let tasa = prompt("Tasa BS por USDT:");
-if(!tasa) return;
-
-let usdt = Number(bs) / Number(tasa);
-
-db.collection("usdt").add({
-  bs: Number(bs),
-  tasa: Number(tasa),
-  usdt: usdt,
-  fecha: firebase.firestore.Timestamp.now()
-}).then(() => {
-
-  return db.collection("gastos").add({
-    concepto: "Compra USDT",
-    monto: Number(bs),
-    fecha: firebase.firestore.Timestamp.now()
-  });
-
-}).then(() => {
-
-  refrescarTodo(); // 🔥 actualiza todo bien
-
-});
-
+function eliminarGasto(id){
+  db.collection("gastos").doc(id).delete().then(refrescarTodo);
 }
 
+function eliminarUSDT(id){
+  db.collection("usdt").doc(id).delete().then(refrescarTodo);
+}
 </script>
 
 </body>
