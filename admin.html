@@ -435,6 +435,25 @@ function gastarUSDT(){
   });
 
 }
+
+function comprarUSDT(){
+
+  let montoUSDT = prompt("¿Cuántos USDT compraste?");
+  if(!montoUSDT || isNaN(montoUSDT)) return;
+
+  let montoBS = prompt("¿Cuántos Bs pagaste?");
+  if(!montoBS || isNaN(montoBS)) return;
+
+  db.collection("usdt").add({
+    usdt: Number(montoUSDT), // suma
+    bs: Number(montoBS),
+    mes: mes.value,
+    fecha: new Date(),
+    tipo: "compra"
+  });
+
+}
+
 </script>
 
 </body>
