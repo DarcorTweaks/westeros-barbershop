@@ -11,27 +11,59 @@
 
 <style>
 body{
-background:linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)),url('fondo.jpg');
+background:
+linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)),
+url('fondo.jpg');
 background-size:cover;
+background-position:center;
 background-attachment:fixed;
 color:white;
 font-family:system-ui;
 }
-.card{background:rgba(20,20,20,0.75);border-radius:18px;padding:15px;margin-bottom:12px;}
-.bank{background:linear-gradient(145deg,#d4af37,#f5d97b);color:black;font-weight:bold;}
-.btn{padding:6px;border-radius:10px;font-size:12px;}
+
+/* TARJETAS */
+.card{
+background:rgba(20,20,20,0.75);
+backdrop-filter:blur(6px);
+border-radius:18px;
+padding:15px;
+margin-bottom:12px;
+box-shadow:0 4px 15px rgba(0,0,0,0.5);
+}
+
+/* TARJETA DESTACADA */
+.bank{
+background:linear-gradient(145deg,#d4af37,#f5d97b);
+color:black;
+font-weight:bold;
+}
+
+/* BOTONES */
+.btn{
+padding:6px;
+border-radius:10px;
+font-size:12px;
+transition:0.2s;
+}
+.btn:hover{transform:scale(1.05);}
+
 .gold{background:#d4af37;color:black;}
 .green{background:#16a34a;color:white;}
 .red{background:#dc2626;color:white;}
 .blue{background:#2563eb;color:white;}
-.tab{padding:8px;border-radius:10px;background:#111;}
-.tab.active{background:#d4af37;color:black;}
+
+/* TEXTOS */
+.title{font-size:13px;opacity:0.7;}
 .big{font-size:20px;font-weight:bold;}
+
+.tab{padding:8px;border-radius:10px;background:#111;}
+.active{background:#d4af37;color:black;}
 </style>
 </head>
 
 <body class="p-4">
 
+<!-- LOGIN -->
 <div id="login" class="flex flex-col items-center justify-center h-screen">
 <img src="logo.png" style="width:100px;">
 <input id="pin" type="password" class="p-2 bg-black border text-center mt-2">
@@ -41,52 +73,35 @@ font-family:system-ui;
 <div id="panel" style="display:none;">
 
 <div class="flex gap-2 mb-3">
-<button id="tabC" onclick="tab('c')" class="tab active">Cobranza</button>
-<button id="tabF" onclick="tab('f')" class="tab">Finanzas</button>
+<button onclick="tab('c')" class="tab active">Cobranza</button>
+<button onclick="tab('f')" class="tab">Finanzas</button>
 </div>
 
+<!-- COBRANZA -->
 <div id="cobranza">
-
 <div class="card">
 <input type="month" id="mes" class="w-full p-2 bg-black text-white">
 </div>
-
-<div class="card">
-<select id="moneda" class="w-full p-2 bg-black text-white">
-<option value="USD">$ Dólar</option>
-<option value="EUR">€ Euro</option>
-</select>
-
-<div style="font-size:12px;color:#aaa;margin-top:5px;">
-Tasa: <span id="tasaBCV">Cargando...</span>
-</div>
-</div>
-
 <div id="sillas"></div>
 </div>
 
+<!-- FINANZAS -->
 <div id="finanzas" style="display:none;">
+
 <div class="grid grid-cols-2 gap-3">
 
 <div class="card bank">
-<div class="title">Ingresos Brutos</div>
+<div class="title">Ingresos</div>
 <div class="big" id="ingresos">$0</div>
 </div>
 
 <div class="card">
 <div class="title">Gastos</div>
 <div class="big text-red-400" id="gastos">$0</div>
-<input type="date" id="fechaGasto" class="w-full p-2 bg-black text-white mt-2">
-<input type="text" id="conceptoGasto" placeholder="Concepto" class="w-full p-2 bg-black text-white mt-1">
-<input type="number" id="montoGasto" placeholder="Monto" class="w-full p-2 bg-black text-white mt-1">
-
-<button onclick="guardarGasto()" class="btn red w-full mt-2">Guardar</button>
-
-<div id="listaGastos" class="mt-2 text-sm"></div>
 </div>
 
 <div class="card">
-<div class="title">USDT Binance</div>
+<div class="title">USDT</div>
 <div class="big text-green-400" id="wallet">0</div>
 <button onclick="comprarUSDT()" class="btn gold w-full mt-2">Comprar</button>
 </div>
@@ -107,12 +122,19 @@ Tasa: <span id="tasaBCV">Cargando...</span>
 <canvas id="grafico"></canvas>
 </div>
 
+<div class="card">
+<h3>📊 Reporte del Mes</h3>
+<div id="reporteMes"></div>
+<button onclick="exportarReporte()" class="btn gold w-full mt-2">Exportar</button>
+</div>
+
 </div>
 
 </div>
 
 <script>
 
+/* LOGIN */
 function entrar(){
 if(pin.value=="2210"){
 login.style.display="none";
@@ -120,71 +142,13 @@ panel.style.display="block";
 }
 }
 
+/* MES */
 mes.value=new Date().toISOString().slice(0,7);
 
+/* TABS */
 function tab(x){
 cobranza.style.display=x=="c"?"block":"none";
 finanzas.style.display=x=="f"?"block":"none";
-tabC.classList.toggle("active",x=="c");
-tabF.classList.toggle("active",x=="f");
-}
-
-/* 🔥 TASA ESTABLE + SIMPLE */
-let tasaUSD = 36;
-let tasaEUR = 39;
-
-async function cargarTasa(){
-try{
-let res = await fetch("https://ve.dolarapi.com/v1/dolares/oficial");
-let data = await res.json();
-
-/* USD */
-tasaUSD = Number(data.promedio) || 36;
-
-/* EUR (aprox) */
-tasaEUR = tasaUSD * 1.08;
-
-let monedaActual = document.getElementById("moneda").value;
-
-/* mostrar tasa correcta */
-document.getElementById("tasaBCV").innerText =
-(monedaActual === "EUR" ? tasaEUR : tasaUSD).toFixed(2);
-
-}catch{
-tasaUSD = 36;
-tasaEUR = 39;
-
-document.getElementById("tasaBCV").innerText = "Manual";
-}
-
-/* actualizar todo */
-actualizar();
-render();
-}
-
-/* 🔥 SIMBOLO */
-function simbolo(){
-let monedaEl = document.getElementById("moneda");
-return monedaEl && monedaEl.value==="EUR" ? "€" : "$";
-}
-
-/* 🔥 CONVERSIÓN A Bs */
-function convertir(m){
-let monedaActual = document.getElementById("moneda").value;
-
-if(monedaActual === "EUR"){
-return (m * tasaEUR).toFixed(2);
-}else{
-return (m * tasaUSD).toFixed(2);
-}
-}
-
-/* 🔥 CAMBIO DE MONEDA SEGURO */
-let monedaEl = document.getElementById("moneda");
-if(monedaEl){
-monedaEl.addEventListener("change",()=>{
-cargarTasa();
-});
 }
 
 /* FIREBASE */
@@ -194,16 +158,13 @@ projectId:"westeros-barbershop"
 });
 const db=firebase.firestore();
 
+/* DATA */
 let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
 let logos=["stark.png","targaryen.png","lannister.png","baratheon.png","night.png"];
 
-let unsubscribePagos = null;
-
+/* COBRANZA */
 function render(){
-
-if(unsubscribePagos){unsubscribePagos();}
-
-unsubscribePagos = db.collection("pagos").onSnapshot(snap=>{
+db.collection("pagos").onSnapshot(snap=>{
 
 sillas.innerHTML="";
 let mesSel=mes.value;
@@ -221,9 +182,9 @@ semanas[d.semana-1]+=d.monto;
 let f=new Date(d.fecha);
 historial+=`
 <div style="display:flex;justify-content:space-between;font-size:12px;">
-<span>${f.toLocaleDateString()} - ${simbolo()}${d.monto}</span>
+<span>${f.toLocaleDateString()} - $${d.monto}</span>
 <button onclick="eliminar('${doc.id}')" style="color:red;">❌</button>
-</div></div>`;
+</div>`;
 }
 });
 
@@ -239,18 +200,18 @@ semanasHTML+=`
 <div style="display:flex;justify-content:space-between;">
 <span>Semana ${s+1}</span>
 <span>${pagado
-? "<span style='color:#22c55e'>✔ "+simbolo()+"40</span>"
-: "<span style='color:#ef4444'>❌ "+simbolo()+semanas[s]+"</span>"}
+? "<span style='color:#22c55e'>✔ $40</span>"
+: "<span style='color:#ef4444'>❌ $"+semanas[s]+"</span>"}
 </span>
 </div>
 <div style="display:flex;gap:5px;">
 <button onclick="abonar('${n}',${s+1})" class="btn green">Abonar</button>
 <button onclick="liquidar('${n}',${s+1})" class="btn gold">Liquidar</button>
 </div>
-</div></div>`;
+</div>`;
 }
 
-sillas.innerHTML+=`<div style="margin-bottom:10px;">
+sillas.innerHTML+=`
 <div class="card text-center">
 
 <img src="${logos[i]}" style="width:50px;margin:auto;">
@@ -260,272 +221,128 @@ ${semanasHTML}
 
 <hr>
 
-Total: ${simbolo()}${total}<br>
-Debe: ${simbolo()}${restante}<br>
-
-<div style="font-size:12px;color:#aaa;">
-💱 ${convertir(total)} Bs<br>
-💱 Debe: ${convertir(restante)} Bs
-</div>
+Total: $${total}<br>
+Debe: $${restante}
 
 <button onclick="editar(${i})" class="btn gold w-full mt-1">Editar</button>
 <button onclick="recibo('${n}',${total},${restante})" class="btn blue w-full mt-1">Recibo</button>
 
 <div class="mt-2 text-left">${historial||"Sin pagos"}</div>
 
-</div></div>`;
+</div>`;
 });
 
 });
 }
 
-/* FINANZAS */
+/* FUNCIONES */
+function abonar(n,s){
+let m=prompt("Monto:");
+db.collection("pagos").add({barbero:n,semana:s,monto:+m,mes:mes.value,fecha:new Date()});
+}
+
+function liquidar(n,s){
+db.collection("pagos").add({barbero:n,semana:s,monto:40,mes:mes.value,fecha:new Date()});
+}
+
+function eliminar(id){
+db.collection("pagos").doc(id).delete();
+}
+
+function editar(i){
+let x=prompt("Nombre:");
+if(x) nombres[i]=x;
+render();
+}
+
+function recibo(n,t,r){
+let msg=`💈 ${n}\nPagado: $${t}\nDebe: $${r}`;
+window.open("https://wa.me/?text="+encodeURIComponent(msg));
+}
+
+/* USDT */
+function comprarUSDT(){
+let m=prompt("Monto:");
+if(!m) return;
+
+db.collection("usdt").add({monto:+m,fecha:new Date()});
+db.collection("gastos").add({concepto:"Compra USDT",monto:+m,fecha:new Date()});
+}
+
+/* DASHBOARD + REPORTE */
 function actualizar(){
+
 let mesSel=mes.value;
 
 db.collection("pagos").get().then(p=>{
 let ingresos=0;
-p.forEach(d=>{
-if(d.data().mes==mesSel) ingresos+=Number(d.data().monto)||0;
-});
+p.forEach(d=>{if(d.data().mes==mesSel) ingresos+=d.data().monto;});
 
 db.collection("gastos").get().then(g=>{
 let gastos=0;
 g.forEach(d=>{
-let fecha = d.data().fecha && d.data().fecha.toDate ? d.data().fecha.toDate() : new Date(d.data().fecha||Date.now());
-let f=fecha.toISOString().slice(0,7);
-if(f==mesSel) gastos+=Number(d.data().monto)||0;
+let m=new Date(d.data().fecha).toISOString().slice(0,7);
+if(m==mesSel) gastos+=d.data().monto;
 });
 
 db.collection("usdt").get().then(u=>{
 let usdt=0;
 u.forEach(d=>{
-let fecha = d.data().fecha && d.data().fecha.toDate ? d.data().fecha.toDate() : new Date(d.data().fecha||Date.now());
-let f=fecha.toISOString().slice(0,7);
-if(f==mesSel) usdt+=Number(d.data().monto)||0;
+let m=new Date(d.data().fecha).toISOString().slice(0,7);
+if(m==mesSel) usdt+=d.data().monto;
 });
 
-let ganancia=ingresos-gastos;
 let efectivo=ingresos-gastos-usdt;
+let ganancia=ingresos-gastos;
 
-document.getElementById("ingresos").innerHTML =
-simbolo()+ingresos.toFixed(2) +
-"<br><small>"+convertir(ingresos)+" Bs</small>";
+ingresos.innerText="$"+ingresos;
+gastos.innerText="$"+gastos;
+wallet.innerText=usdt;
+efectivo.innerText="$"+efectivo;
+ganancia.innerText="$"+ganancia;
 
-document.getElementById("gastos").innerHTML =
-simbolo()+gastos.toFixed(2) +
-"<br><small>"+convertir(gastos)+" Bs</small>";
+reporteMes.innerHTML=`
+Mes: ${mesSel}<br>
+Ingresos: $${ingresos}<br>
+Gastos: $${gastos}<br>
+USDT: $${usdt}<br>
+Ganancia: $${ganancia}<br>
+Efectivo: $${efectivo}
+`;
 
-document.getElementById("wallet").innerHTML =
-usdt.toFixed(2)+" USDT" +
-"<br><small>"+convertir(usdt)+" Bs</small>";
+});
 
-document.getElementById("ganancia").innerHTML =
-simbolo()+ganancia.toFixed(2) +
-"<br><small>"+convertir(ganancia)+" Bs</small>";
+});
 
-document.getElementById("efectivo").innerHTML =
-simbolo()+efectivo.toFixed(2) +
-"<br><small>"+convertir(efectivo)+" Bs</small>";
+});
+}
+
+/* EXPORTAR */
+function exportarReporte(){
+let blob=new Blob([reporteMes.innerText]);
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="reporte.txt";
+a.click();
+}
 
 /* GRAFICO */
-let ctx=document.getElementById("grafico");
-if(window.miGrafico) window.miGrafico.destroy();
-
-window.miGrafico=new Chart(ctx,{
-type:"bar",
-data:{
-labels:["Ingresos","Gastos","USDT","Ganancia"],
-datasets:[{
-label:"Resumen",
-data:[ingresos,gastos,usdt,ganancia]
-}]
-}
-});
-
-});
-});
-});
-}
-/* FUNCIONES */
-function abonar(n,s){
-let m=prompt("Monto ("+simbolo()+"):");
-if(!m) return;
-
-db.collection("pagos").add({
-barbero:n,
-semana:s,
-monto:+m,
-mes:mes.value,
-fecha:new Date()
-});
-}
-
-function liquidar(n,s){
-db.collection("pagos").add({
-barbero:n,
-semana:s,
-monto:40,
-mes:mes.value,
-fecha:new Date()
-});
-}
-
-function eliminar(id){ db.collection("pagos").doc(id).delete(); }
-
-function agregarGasto(){
-let n=prompt("Concepto:");
-if(!n) return;
-
-let m=prompt("Monto ("+simbolo()+"):");
-if(!m) return;
-
-let f=prompt("Fecha (YYYY-MM-DD) o vacío:");
-
-db.collection("gastos").add({
-nombre:n,
-monto:+m,
-fecha: f ? new Date(f) : new Date()
-});
-}
-
-function guardarGasto(){
-let fecha = document.getElementById("fechaGasto").value;
-let concepto = document.getElementById("conceptoGasto").value;
-let monto = document.getElementById("montoGasto").value;
-
-if(!concepto || !monto){
-alert("Completa los datos");
-return;
-}
-
-db.collection("gastos").add({
-nombre: concepto,
-monto: Number(monto),
-fecha: fecha ? new Date(fecha) : new Date()
-});
-
-document.getElementById("fechaGasto").value="";
-document.getElementById("conceptoGasto").value="";
-document.getElementById("montoGasto").value="";
-
-actualizar();
-renderGastos();
-}
-
-
-/* 🔥 USDT MEJORADO (USA DISPONIBLE AUTOMÁTICO) */
-function comprarUSDT(){
-let disponible = 0;
-
-/* calcular disponible real */
-db.collection("pagos").get().then(p=>{
-let ingresos=0;
+let chart;
+db.collection("pagos").onSnapshot(p=>{
+let data=[0,0,0,0,0];
 p.forEach(d=>{
-if(d.data().mes==mes.value){
-ingresos+=Number(d.data().monto)||0;
-}
+let i=nombres.indexOf(d.data().barbero);
+if(i>=0) data[i]+=d.data().monto;
+});
+if(chart) chart.destroy();
+chart=new Chart(grafico,{type:"bar",data:{labels:nombres,datasets:[{data:data}]}})
 });
 
-db.collection("gastos").get().then(g=>{
-let gastos=0;
-g.forEach(d=>{
-let fecha = d.data().fecha && d.data().fecha.toDate ? d.data().fecha.toDate() : new Date(d.data().fecha||Date.now());
-if(fecha.toISOString().slice(0,7)==mes.value){
-gastos+=Number(d.data().monto)||0;
-}
-});
+/* EVENTOS */
+mes.addEventListener("change",()=>{render();actualizar();});
 
-disponible = ingresos - gastos;
-
-/* sugerencia automática */
-let m = prompt("Disponible: "+simbolo()+disponible+"\n¿Cuánto deseas comprar?");
-
-if(!m || isNaN(m)){
-alert("Monto inválido");
-return;
-}
-
-m = Number(m);
-
-if(m > disponible){
-alert("No tienes suficiente disponible");
-return;
-}
-
-/* guardar */
-db.collection("usdt").add({
-monto:m,
-fecha:new Date()
-});
-
-db.collection("gastos").add({
-nombre:"Compra USDT",
-monto:m,
-fecha:new Date()
-});
-
-alert("USDT comprado");
-
-actualizar();
-renderGastos();
-
-});
-});
-}
-
-function editar(i){ let x=prompt("Nombre:"); if(x) nombres[i]=x; render(); }
-
-function recibo(n,t,r){
-let msg=`💈 ${n}\nPagado: ${simbolo()}${t}\nDebe: ${simbolo()}${r}`;
-window.open("https://wa.me/?text="+encodeURIComponent(msg));
-}
-
-/* INIT */
 render();
 actualizar();
-cargarTasa();
-setInterval(cargarTasa,60000);
-
-/* GASTOS */
-function renderGastos(){
-db.collection("gastos").onSnapshot(snap=>{
-let html="";
-let mesSel=mes.value;
-
-snap.forEach(doc=>{
-let d = doc.data();
-
-let fecha = d.fecha && d.fecha.toDate ? d.fecha.toDate() : new Date(d.fecha);
-let mesGasto = fecha.toISOString().slice(0,7);
-
-if(mesGasto!==mesSel) return;
-
-html+=`
-<div>
-${fecha.toLocaleDateString()} - ${d.nombre} - ${simbolo()}${d.monto}
-<button onclick="eliminarGasto('${doc.id}')">❌</button>
-</div></div>`;
-});
-
-listaGastos.innerHTML=html || "Sin gastos";
-});
-}
-
-renderGastos();
-
-function eliminarGasto(id){
-if(confirm("¿Eliminar gasto?")){
-db.collection("gastos").doc(id).delete();
-}
-}
-
-/* 🔥 CAMBIO DE MES */
-mes.addEventListener("change",()=>{
-actualizar();
-render();
-renderGastos();
-});
 
 </script>
 
