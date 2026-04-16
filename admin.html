@@ -134,180 +134,229 @@ transition:0.2s;
 
 <script>
 
+/* ELEMENTOS */
+const login = document.getElementById("login");
+const panel = document.getElementById("panel");
+const pin = document.getElementById("pin");
+const mes = document.getElementById("mes");
+
+const sillas = document.getElementById("sillas");
+const ingresos = document.getElementById("ingresos");
+const gastos = document.getElementById("gastos");
+const wallet = document.getElementById("wallet");
+const efectivo = document.getElementById("efectivo");
+const ganancia = document.getElementById("ganancia");
+const reporteMes = document.getElementById("reporteMes");
+
+const graficoEl = document.getElementById("grafico");
+
 /* LOGIN */
 function entrar(){
-if(pin.value=="2210"){
-login.style.display="none";
-panel.style.display="block";
-}
+  if(pin.value == "2210"){
+    login.style.display = "none";
+    panel.style.display = "block";
+  }
 }
 
 /* MES */
-mes.value=new Date().toISOString().slice(0,7);
+mes.value = new Date().toISOString().slice(0,7);
 
 /* TABS */
 function tab(x){
-cobranza.style.display=x=="c"?"block":"none";
-finanzas.style.display=x=="f"?"block":"none";
+  document.getElementById("cobranza").style.display = x=="c"?"block":"none";
+  document.getElementById("finanzas").style.display = x=="f"?"block":"none";
 }
 
 /* FIREBASE */
 firebase.initializeApp({
-apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
-projectId:"westeros-barbershop"
+  apiKey:"AIzaSyA7g2TA_6P4Wwzw1AfbsfNtwZijA",
+  projectId:"westeros-barbershop"
 });
-const db=firebase.firestore();
+const db = firebase.firestore();
 
 /* DATA */
 let nombres=["Stark","Targaryen","Lannister","Baratheon","Guardia"];
 let logos=["stark.png","targaryen.png","lannister.png","baratheon.png","night.png"];
 
+/* LISTENER GLOBAL (IMPORTANTE) */
+db.collection("pagos").onSnapshot(() => {
+  render();
+  actualizar();
+  cargarGrafico();
+});
+
+function refrescarTodo(){
+  render();
+  actualizar();
+  cargarGrafico();
+}
+
+db.collection("pagos").onSnapshot(() => {
+  refrescarTodo();
+});
+
+db.collection("gastos").onSnapshot(() => {
+  refrescarTodo();
+});
+
+db.collection("usdt").onSnapshot(() => {
+  refrescarTodo();
+});
 /* COBRANZA */
 function render(){
-db.collection("pagos").onSnapshot(snap=>{
+  sillas.innerHTML = "";
+  let mesSel = mes.value;
 
-sillas.innerHTML="";
-let mesSel=mes.value;
+  db.collection("pagos").get().then(snap => {
 
-nombres.forEach((n,i)=>{
+    nombres.forEach((n,i)=>{
 
-let semanas=[0,0,0,0];
-let historial="";
+      let semanas=[0,0,0,0];
+      let historial="";
 
-snap.forEach(doc=>{
-let d=doc.data();
-if(d.barbero==n && d.mes==mesSel){
-semanas[d.semana-1]+=d.monto;
+      snap.forEach(doc=>{
+        let d = doc.data();
+        if(d.barbero==n && d.mes==mesSel){
+          semanas[d.semana-1] += d.monto;
 
-let f=new Date(d.fecha);
-historial+=`
-<div style="display:flex;justify-content:space-between;font-size:12px;">
-<span>${f.toLocaleDateString()} - $${d.monto}</span>
-<button onclick="eliminar('${doc.id}')" style="color:red;">❌</button>
-</div>`;
-}
-});
+          let f = new Date(d.fecha);
+          historial += `
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span>${f.toLocaleDateString()} - $${d.monto}</span>
+            <button onclick="eliminar('${doc.id}')" style="color:red;">❌</button>
+          </div>`;
+        }
+      });
 
-let total=semanas.reduce((a,b)=>a+b,0);
-let restante=160-total;
+      let total = semanas.reduce((a,b)=>a+b,0);
+      let restante = 160-total;
 
-let semanasHTML="";
-for(let s=0;s<4;s++){
-let pagado=semanas[s]>=40;
+      let semanasHTML="";
+      for(let s=0;s<4;s++){
+        let pagado = semanas[s]>=40;
 
-semanasHTML+=`
-<div style="border-bottom:1px solid #333;padding:5px;">
-<div style="display:flex;justify-content:space-between;">
-<span>Semana ${s+1}</span>
-<span>${pagado
-? "<span style='color:#22c55e'>✔ $40</span>"
-: "<span style='color:#ef4444'>❌ $"+semanas[s]+"</span>"}
-</span>
-</div>
-<div style="display:flex;gap:5px;">
-<button onclick="abonar('${n}',${s+1})" class="btn green">Abonar</button>
-<button onclick="liquidar('${n}',${s+1})" class="btn gold">Liquidar</button>
-</div>
-</div>`;
-}
+        semanasHTML += `
+        <div style="border-bottom:1px solid #333;padding:5px;">
+          <div style="display:flex;justify-content:space-between;">
+            <span>Semana ${s+1}</span>
+            <span>
+              ${pagado
+                ? "<span style='color:#22c55e'>✔ $40</span>"
+                : "<span style='color:#ef4444'>❌ $"+semanas[s]+"</span>"
+              }
+            </span>
+          </div>
 
-sillas.innerHTML+=`
-<div class="card text-center">
+          <div style="display:flex;gap:5px;">
+            <button onclick="abonar('${n}',${s+1})" class="btn green">Abonar</button>
+            <button onclick="liquidar('${n}',${s+1})" class="btn gold">Liquidar</button>
+          </div>
+        </div>`;
+      }
 
-<img src="${logos[i]}" style="width:50px;margin:auto;">
-<div class="big">${n}</div>
+      sillas.innerHTML += `
+      <div class="card text-center">
 
-${semanasHTML}
+        <img src="${logos[i]}" style="width:50px;margin:auto;">
+        <div class="big">${n}</div>
 
-<hr>
+        ${semanasHTML}
 
-Total: $${total}<br>
-Debe: $${restante}
+        <hr>
 
-<button onclick="editar(${i})" class="btn gold w-full mt-1">Editar</button>
-<button onclick="recibo('${n}',${total},${restante})" class="btn blue w-full mt-1">Recibo</button>
+        Total: $${total}<br>
+        Debe: $${restante}
 
-<div class="mt-2 text-left">${historial||"Sin pagos"}</div>
+        <button onclick="recibo('${n}',${total},${restante})" class="btn blue w-full mt-1">Recibo</button>
 
-</div>`;
-});
+        <div class="mt-2 text-left">${historial||"Sin pagos"}</div>
 
-});
+      </div>`;
+    });
+
+  });
 }
 
 /* FUNCIONES */
 function abonar(n,s){
-let m=prompt("Monto:");
-db.collection("pagos").add({barbero:n,semana:s,monto:+m,mes:mes.value,fecha:new Date()});
+  let m = prompt("Monto:");
+  if(!m) return;
+  db.collection("pagos").add({
+    barbero:n,
+    semana:s,
+    monto:+m,
+    mes:mes.value,
+    fecha:new Date()
+  });
 }
 
 function liquidar(n,s){
-db.collection("pagos").add({barbero:n,semana:s,monto:40,mes:mes.value,fecha:new Date()});
+  db.collection("pagos").add({
+    barbero:n,
+    semana:s,
+    monto:40,
+    mes:mes.value,
+    fecha:new Date()
+  });
 }
 
 function eliminar(id){
-db.collection("pagos").doc(id).delete();
+  db.collection("pagos").doc(id).delete();
 }
 
-function editar(i){
-let x=prompt("Nombre:");
-if(x) nombres[i]=x;
-render();
-}
-
-function recibo(n,t,r){
-let msg=`💈 ${n}\nPagado: $${t}\nDebe: $${r}`;
-window.open("https://wa.me/?text="+encodeURIComponent(msg));
-}
-
-/* USDT */
-function comprarUSDT(){
-let m=prompt("Monto:");
-if(!m) return;
-
-db.collection("usdt").add({monto:+m,fecha:new Date()});
-db.collection("gastos").add({concepto:"Compra USDT",monto:+m,fecha:new Date()});
-}
-
-/* DASHBOARD + REPORTE */
+/* FINANZAS */
 function actualizar(){
 
-let mesSel=mes.value;
+let mesSel = mes.value;
 
 db.collection("pagos").get().then(p=>{
-let ingresos=0;
-p.forEach(d=>{if(d.data().mes==mesSel) ingresos+=d.data().monto;});
+let ingresosV = 0;
+
+p.forEach(d=>{
+let data = d.data();
+if(data.mes == mesSel){
+ingresosV += Number(data.monto || 0);
+}
+});
 
 db.collection("gastos").get().then(g=>{
-let gastos=0;
+let gastosV = 0;
+
 g.forEach(d=>{
-let m=new Date(d.data().fecha).toISOString().slice(0,7);
-if(m==mesSel) gastos+=d.data().monto;
+let data = d.data();
+let m = new Date(data.fecha).toISOString().slice(0,7);
+if(m == mesSel){
+gastosV += Number(data.monto || 0);
+}
 });
 
 db.collection("usdt").get().then(u=>{
-let usdt=0;
+let usdt = 0;
+
 u.forEach(d=>{
-let m=new Date(d.data().fecha).toISOString().slice(0,7);
-if(m==mesSel) usdt+=d.data().monto;
+let data = d.data();
+let m = new Date(data.fecha).toISOString().slice(0,7);
+if(m == mesSel){
+usdt += Number(data.monto || 0);
+}
 });
 
-let efectivo=ingresos-gastos-usdt;
-let ganancia=ingresos-gastos;
+let efectivoV = ingresosV - gastosV - usdt;
+let gananciaV = ingresosV - gastosV;
 
-ingresos.innerText="$"+ingresos;
-gastos.innerText="$"+gastos;
-wallet.innerText=usdt;
-efectivo.innerText="$"+efectivo;
-ganancia.innerText="$"+ganancia;
+ingresos.innerText = "$" + ingresosV;
+gastos.innerText = "$" + gastosV;
+wallet.innerText = usdt;
+efectivo.innerText = "$" + efectivoV;
+ganancia.innerText = "$" + gananciaV;
 
-reporteMes.innerHTML=`
+reporteMes.innerHTML = `
 Mes: ${mesSel}<br>
-Ingresos: $${ingresos}<br>
-Gastos: $${gastos}<br>
+Ingresos: $${ingresosV}<br>
+Gastos: $${gastosV}<br>
 USDT: $${usdt}<br>
-Ganancia: $${ganancia}<br>
-Efectivo: $${efectivo}
+Ganancia: $${gananciaV}<br>
+Efectivo: $${efectivoV}
 `;
 
 });
@@ -317,33 +366,70 @@ Efectivo: $${efectivo}
 });
 }
 
-/* EXPORTAR */
-function exportarReporte(){
-let blob=new Blob([reporteMes.innerText]);
-let a=document.createElement("a");
-a.href=URL.createObjectURL(blob);
-a.download="reporte.txt";
-a.click();
-}
-
 /* GRAFICO */
 let chart;
-db.collection("pagos").onSnapshot(p=>{
+
+function cargarGrafico(){
+db.collection("pagos").get().then(p=>{
 let data=[0,0,0,0,0];
+
 p.forEach(d=>{
-let i=nombres.indexOf(d.data().barbero);
+let i = nombres.indexOf(d.data().barbero);
 if(i>=0) data[i]+=d.data().monto;
 });
+
 if(chart) chart.destroy();
-chart=new Chart(grafico,{type:"bar",data:{labels:nombres,datasets:[{data:data}]}})
+
+chart = new Chart(graficoEl,{
+type:"bar",
+data:{labels:nombres,datasets:[{data:data}]}
 });
 
-/* EVENTOS */
-mes.addEventListener("change",()=>{render();actualizar();});
+});
+}
+
+/* INIT */
+mes.addEventListener("change",()=>{
+render();
+actualizar();
+cargarGrafico();
+});
 
 render();
 actualizar();
+cargarGrafico();
 
+render();
+actualizar();
+cargarGrafico();
+
+/* 👇 AQUÍ PEGAS ESTO */
+function comprarUSDT(){
+
+let bs = prompt("Monto en BS:");
+if(!bs) return;
+
+let tasa = prompt("Tasa BS por USDT:");
+if(!tasa) return;
+
+let usdt = Number(bs) / Number(tasa);
+
+db.collection("usdt").add({
+bs: Number(bs),
+tasa: Number(tasa),
+usdt: usdt,
+fecha: new Date()
+});
+
+db.collection("gastos").add({
+concepto:"Compra USDT",
+monto: Number(bs),
+fecha: new Date()
+});
+
+actualizar();
+cargarGrafico();
+}
 </script>
 
 </body>
